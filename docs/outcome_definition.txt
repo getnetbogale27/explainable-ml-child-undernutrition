@@ -1,0 +1,18 @@
+Outcome Definition: Concurrent Child Undernutrition Classes
+
+This project models concurrent child undernutrition outcomes for Young Lives Ethiopia.
+The outcome classes are:
+- N: No undernutrition
+- U: Underweight only
+- S: Stunting only
+- W: Wasting only
+- US: Underweight + Stunting
+- UW: Underweight + Wasting
+- USW: Underweight + Stunting + Wasting
+
+WHO z-score thresholds
+- Stunting: height-for-age z-score (HAZ) < -2
+- Wasting: weight-for-height z-score (WHZ) < -2
+- Underweight: weight-for-age z-score (WAZ) < -2
+
+Class labels are derived from the combination of these indicators.
