@@ -1,0 +1,4 @@
+Place the de-identified Young Lives Ethiopia dataset in this folder.
+
+Expected default filename: young_lives_ethiopia.csv (adjust in configs/default.txt).
+The raw data are restricted and are not included in this repository.

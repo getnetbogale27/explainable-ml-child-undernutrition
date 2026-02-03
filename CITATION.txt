@@ -1,0 +1,8 @@
+If you use this software, please cite the manuscript and this repository.
+
+Title: Imbalance-Aware Explainable Machine Learning for Concurrent Child Undernutrition Modeling
+Authors: TBD
+Version: 0.1.0
+Release date: 2025-01-01
+URL: https://github.com/placeholder/imbalanced-ml-child-undernutrition
+License: MIT
