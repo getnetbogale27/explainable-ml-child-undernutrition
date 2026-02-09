@@ -23,16 +23,15 @@ def plot_gender_stratified_confusion_matrices(
     Generates side-by-side confusion matrices for Male and Female subgroups.
     Matches the style of Fig. 7 in the manuscript.
     """
-    # Ensure gender column is in X_test (it might be encoded, so we check the original or encoded name)
-    # If gender was one-hot encoded, you might need to map it back or use the original index
+    # The gender column must exist in X_test, using the same representation as gender_col.
+    # Use the encoded column name if gender was one-hot encoded.
     
     # Create a combined dataframe for easy subsetting
     test_df = X_test.copy()
     test_df['true_label'] = y_test.values
     test_df['pred_label'] = model.predict(X_test)
 
-    # Define subgroups (adjust 'Male'/'Female' strings based on your dataset encoding)
-    # Assuming 0 = Male, 1 = Female or similar if encoded
+    # Define subgroups based on gender_col encoding (e.g., 0 = Male, 1 = Female).
     genders = test_df[gender_col].unique()
     
     fig, axes = plt.subplots(1, 2, figsize=(16, 7), sharey=True)
