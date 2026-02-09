@@ -1,4 +1,3 @@
-Place the de-identified Young Lives Ethiopia dataset in this folder.
-
-Expected default filename: young_lives_ethiopia.csv (adjust in configs/default.txt).
-The raw data are restricted and are not included in this repository.
+1. Download data from the Young Lives Study (Rounds 1-5 constructed files, 2002-2016).
+2. Save as "Baseline Data.csv" in this folder.
+3. Run the pipeline.

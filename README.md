@@ -35,7 +35,7 @@ model training, evaluation, tables, and figures without shipping restricted data
    pip install -r requirements.txt
    ```
 2. Add data:
-   - Place the dataset at `data/young_lives_ethiopia.csv` (or update `configs/default.txt`).
+   - Place the dataset at `data/Baseline Data.csv` (or update `configs/default.txt`).
    - The dataset should contain the outcome column and covariates described in the manuscript.
 3. Run the full pipeline:
    ```bash
@@ -77,6 +77,10 @@ python -m ruff check .
 - Imputation, encoding, scaling, and SMOTE are fit only on training data.
 - SMOTE is applied within cross-validation folds to prevent leakage.
 - Model selection uses macro-F1 and balanced accuracy.
+
+## Data Availability
+
+The dataset used in this study was obtained from the Young Lives Study. Access to the data can be obtained either by completing the form available at [Young Lives Data Access](https://www.younglives.org.uk/use-our-data-form), selecting the dataset "Young Lives: Rounds 1-5 constructed files, 2002-2016" (and then extract only 2002 or baseline survey only where authors used in this study), or by creating a user account through the UK Data Service, subject to their terms and conditions. Additionally, the survey questionnaires for round 1 are available through [Young Lives Round 1 Questionnaires](https://www.younglives.org.uk/round-1-questionnaires). After downloading the data, place `Baseline Data.csv` in the `data/` folder to run the code.
 
 ## Citation
 
