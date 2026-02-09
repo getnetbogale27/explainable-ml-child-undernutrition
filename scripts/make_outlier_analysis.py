@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Fig. S3: Boxplots showing continuous variables before and after outlier treatment."""
 from __future__ import annotations
 import pandas as pd

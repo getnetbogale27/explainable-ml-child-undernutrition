@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Script to generate Table 2: Performance across different split ratios."""
 from __future__ import annotations
 

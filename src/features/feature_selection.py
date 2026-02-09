@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """RandomForest Gini importance feature selection with median cutoff."""
 from __future__ import annotations
 import logging

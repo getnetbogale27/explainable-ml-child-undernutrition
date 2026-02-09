@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Plotting utilities for model evaluation, including gender-stratified confusion matrices."""
 from __future__ import annotations
 import logging

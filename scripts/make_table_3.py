@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Table 3 comparing 11 classifiers: CV mean±SD and test-set metrics + paired t-tests vs RF."""
 import argparse
 import json

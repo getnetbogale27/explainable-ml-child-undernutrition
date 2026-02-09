@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Model training with cross-validation and hyperparameter tuning."""
 from __future__ import annotations
 

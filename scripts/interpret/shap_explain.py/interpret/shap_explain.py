@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """SHAP explainability: Beeswarm and Summary plots for multiclass models."""
 from __future__ import annotations
 import logging

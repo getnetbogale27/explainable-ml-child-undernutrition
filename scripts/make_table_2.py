@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Table 2 style comparisons across multiple train/test splits and classifiers."""
 import argparse
 import json

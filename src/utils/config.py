@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Configuration and logging utilities."""
 from __future__ import annotations
 

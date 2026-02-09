@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """
 Generate Table S7: Performance metrics of ML models across train/test splits.
 

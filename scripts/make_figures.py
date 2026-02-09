@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate figures from a trained model."""
 from __future__ import annotations
 

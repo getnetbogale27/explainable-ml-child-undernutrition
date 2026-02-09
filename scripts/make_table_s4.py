@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Table S4: Descriptive statistics of all categorical variables by nutritional status."""
 from __future__ import annotations
 import pandas as pd

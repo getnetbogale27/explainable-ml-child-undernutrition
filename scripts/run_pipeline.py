@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Run the full preprocessing, training, evaluation, and explainability pipeline."""
 from __future__ import annotations
 

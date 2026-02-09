@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Run experiments across multiple config files."""
 from __future__ import annotations
 

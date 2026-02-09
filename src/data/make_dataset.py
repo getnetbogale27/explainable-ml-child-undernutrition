@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Data loading, outcome encoding, and train/test splitting."""
 from __future__ import annotations
 
