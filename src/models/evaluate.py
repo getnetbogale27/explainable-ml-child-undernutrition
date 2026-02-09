@@ -45,9 +45,11 @@ def evaluate_model(model: Any, X_test, y_test, class_labels: list[str]):
 
 def summarize_cv_metrics(cv_results) -> Dict:
     """Compact summary of cv_results from GridSearchCV (mean test score, best index, etc.)."""
+    rank_scores = cv_results.get("rank_test_score")
+    best_index = int(np.argmin(rank_scores)) if rank_scores is not None else None
     out = {
         "mean_test_score": float(np.max(cv_results.get("mean_test_score", np.array([np.nan])))),
-        "best_index": int(cv_results.get("rank_test_score", [None])[0]) if "rank_test_score" in cv_results else None,
+        "best_index": best_index,
         "params": cv_results.get("params", [])[:5]
     }
     return out

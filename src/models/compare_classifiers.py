@@ -15,7 +15,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 # classifiers
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier,
+    GradientBoostingClassifier,
+    AdaBoostClassifier,
+)
 from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
 from sklearn.neighbors import KNeighborsClassifier
@@ -25,19 +29,38 @@ from sklearn.tree import DecisionTreeClassifier
 def default_classifiers(random_state: int = 42) -> Dict[str, Any]:
     """Return a dict of classifier instances to evaluate (names -> estimator)."""
     return {
-        "Support Vector Machine": SVC(probability=True, kernel="rbf", random_state=random_state),
-        "Random Forest": RandomForestClassifier(n_estimators=500, random_state=random_state, n_jobs=-1),
-        "Gradient Boosting": GradientBoostingClassifier(n_estimators=300, random_state=random_state),
+        "Support Vector Machine": SVC(
+            probability=True, kernel="rbf", random_state=random_state
+        ),
+        "Random Forest": RandomForestClassifier(
+            n_estimators=500, random_state=random_state, n_jobs=-1
+        ),
+        "Gradient Boosting": GradientBoostingClassifier(
+            n_estimators=300, random_state=random_state
+        ),
         "AdaBoost": AdaBoostClassifier(n_estimators=200, random_state=random_state),
-        "Logistic Regression (L2)": LogisticRegression(penalty="l2", solver="saga", max_iter=5000, random_state=random_state),
+        "Logistic Regression (L2)": LogisticRegression(
+            penalty="l2", solver="saga", max_iter=5000, random_state=random_state
+        ),
         "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5),
         "Naive Bayes": GaussianNB(),
         "Decision Tree": DecisionTreeClassifier(random_state=random_state),
-        "Logistic Regression (L1)": LogisticRegression(penalty="l1", solver="saga", max_iter=5000, random_state=random_state),
-        "Elastic-Net Logistic": LogisticRegression(penalty="elasticnet", l1_ratio=0.5, solver="saga", max_iter=5000, random_state=random_state),
+        "Logistic Regression (L1)": LogisticRegression(
+            penalty="l1", solver="saga", max_iter=5000, random_state=random_state
+        ),
+        "Elastic-Net Logistic": LogisticRegression(
+            penalty="elasticnet",
+            l1_ratio=0.5,
+            solver="saga",
+            max_iter=5000,
+            random_state=random_state,
+        ),
     }
 
-def _compute_confidence_interval(values: np.ndarray, confidence: float = 0.95) -> Tuple[float, float]:
+
+def _compute_confidence_interval(
+    values: np.ndarray, confidence: float = 0.95
+) -> Tuple[float, float]:
     """Return (lower, upper) 95% CI for the array of values using t-distribution."""
     n = len(values)
     mean = float(np.mean(values))
@@ -47,6 +70,7 @@ def _compute_confidence_interval(values: np.ndarray, confidence: float = 0.95) -
     else:
         h = 0.0
     return mean - h, mean + h
+
 
 def compare_classifiers(
     X,
@@ -91,13 +115,19 @@ def compare_classifiers(
             steps.append(("clf", clf))
             pipe = Pipeline(steps=steps)
 
-            scores = cross_val_score(pipe, X, y, cv=cv, scoring=scoring, n_jobs=-1, error_score="raise")
+            scores = cross_val_score(
+                pipe, X, y, cv=cv, scoring=scoring, n_jobs=-1, error_score="raise"
+            )
             all_scores.extend(scores.tolist())
 
         arr = np.array(all_scores)
         mean = float(np.mean(arr))
-        std = float(np.std(arr, ddof=1))
-        sem = float(stats.sem(arr))
+        if len(arr) > 1:
+            std = float(np.std(arr, ddof=1))
+            sem = float(stats.sem(arr, nan_policy="omit"))
+        else:
+            std = 0.0
+            sem = 0.0
         ci_low, ci_high = _compute_confidence_interval(arr)
         results.append({
             "name": clf_name,
@@ -107,7 +137,7 @@ def compare_classifiers(
             "ci_lower": ci_low,
             "ci_upper": ci_high,
             "n_scores": len(arr),
-            "scores": arr
+            "scores": arr.tolist()
         })
 
     df = pd.DataFrame(results).sort_values("mean", ascending=False).reset_index(drop=True)

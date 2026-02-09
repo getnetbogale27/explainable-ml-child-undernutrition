@@ -43,6 +43,24 @@ def _validate_features(df: pd.DataFrame, features: List[str], name: str) -> None
         raise ValueError(f"Missing {name} columns in dataframe: {missing}")
 
 
+def _strip_feature_names(features: List[str]) -> List[str]:
+    return [c.strip() for c in features]
+
+
+def _validate_ordinal_mappings(
+    df: pd.DataFrame, ordinal_mappings: Dict[str, List[str]]
+) -> List[str]:
+    ordinal_features = list(ordinal_mappings.keys())
+    _validate_features(df, ordinal_features, "ordinal")
+    empty_categories = [col for col, categories in ordinal_mappings.items() if not categories]
+    if empty_categories:
+        raise ValueError(
+            "Ordinal mappings must define at least one category for: "
+            f"{empty_categories}"
+        )
+    return ordinal_features
+
+
 def build_minmax_preprocessor(
     numeric_features: List[str],
     categorical_features: List[str],
@@ -86,17 +104,20 @@ def build_minmax_preprocessor(
 
 def reconstruct_feature_names(preprocessor: ColumnTransformer) -> List[str]:
     """Return feature names after ColumnTransformer (sklearn >=1.0)."""
-    try:
-        names = list(preprocessor.get_feature_names_out())
-    except Exception:
-        # Fallback: construct plausible names (may be less robust)
-        names = []
-        for name, trans, cols in preprocessor.transformers_:
-            if name == "remainder":
-                continue
-            # For OneHotEncoder we cannot easily infer all categories here without fitting
-            # so this function is expected to be called after preprocessor is fitted.
-        names = list(preprocessor.get_feature_names_out())
+    if hasattr(preprocessor, "get_feature_names_out"):
+        return list(preprocessor.get_feature_names_out())
+
+    names: List[str] = []
+    for name, trans, cols in preprocessor.transformers_:
+        if name == "remainder":
+            continue
+        if hasattr(trans, "get_feature_names_out"):
+            try:
+                names.extend(list(trans.get_feature_names_out(cols)))
+            except TypeError:
+                names.extend(list(trans.get_feature_names_out()))
+        else:
+            names.extend(list(cols))
     return names
 
 
@@ -121,13 +142,16 @@ def preprocess_and_oversample(
 
     df = df.copy()
 
+    # Basic cleaning: strip column names
+    df.columns = [c.strip() for c in df.columns]
+    numeric_features = _strip_feature_names(numeric_features)
+    categorical_features = _strip_feature_names(categorical_features)
+    drop_features = _strip_feature_names(drop_features)
+
     # Drop redundant cols
     if drop_features:
         LOGGER.info("Dropping %d redundant features", len(drop_features))
         df = df.drop(columns=[c for c in drop_features if c in df.columns], errors="ignore")
-
-    # Basic cleaning: strip column names
-    df.columns = [c.strip() for c in df.columns]
 
     # Ensure target present
     if target_col not in df.columns:
@@ -136,7 +160,19 @@ def preprocess_and_oversample(
     # Validate feature lists
     _validate_features(df, numeric_features, "numeric")
     _validate_features(df, categorical_features, "categorical")
-    ordinal_features = list(ordinal_mappings.keys()) if ordinal_mappings else []
+    ordinal_features = (
+        _validate_ordinal_mappings(df, ordinal_mappings) if ordinal_mappings else []
+    )
+    overlap = (
+        set(numeric_features) & set(categorical_features)
+        | set(numeric_features) & set(ordinal_features)
+        | set(categorical_features) & set(ordinal_features)
+    )
+    if overlap:
+        raise ValueError(
+            "Features must be uniquely assigned to a single type. "
+            f"Overlaps found: {sorted(overlap)}"
+        )
 
     # Drop rows with missing target
     df = df.dropna(subset=[target_col])
