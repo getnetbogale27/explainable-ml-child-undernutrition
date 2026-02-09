@@ -1,0 +1,59 @@
+paths:
+  data: data/young_lives_ethiopia.csv
+  results: results
+  figures: figures
+  tables: tables
+
+random_state: 42
+cv_folds: 5
+
+split:
+  test_size: 0.2
+
+dataset:
+  target_col: outcome_class
+  numeric_features:
+    - age_months
+    - household_size
+    - maternal_age
+    - dad_age
+    - BMI
+    - care_age
+    - head_age
+  categorical_features:
+    - ch_sex
+    - region
+    - residence
+    - ch-longterm_health_problem
+    - ch_health_compared_peers
+    - care_Edu_new
+    - Dad_Edu_new
+    - mom_live_location
+    - dad_live_location
+    - hh_size
+    - wealth_quntile
+    - access_to_safe_drink_water
+    - access_to_toilet
+    - access_to_cookng-oil
+    - access_to_electricity
+    - BCG
+    - Measel
+    - DPT
+    - Polio
+    - chingury
+    - head_rela
+    
+class_labels:
+  - N
+  - U
+  - S
+  - W
+  - US
+  - UW
+  - USW
+
+model_grid:
+  clf__n_estimators: [200, 500]
+  clf__max_depth: [null, 10, 20]
+  clf__min_samples_split: [2, 5]
+  clf__min_samples_leaf: [1, 2]
