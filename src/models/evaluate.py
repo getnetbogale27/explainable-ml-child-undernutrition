@@ -1,51 +1,53 @@
-"""Model evaluation utilities."""
+"""Evaluation utilities: compute test metrics and summarize CV metrics."""
 from __future__ import annotations
-
-import logging
-from typing import Any, Dict, List
-
+import json
 import numpy as np
-import pandas as pd
+from typing import Any, Dict
+
 from sklearn.metrics import (
-    classification_report,
-    confusion_matrix,
-    f1_score,
+    accuracy_score,
     balanced_accuracy_score,
+    classification_report,
+    roc_auc_score,
+    confusion_matrix
 )
 
-LOGGER = logging.getLogger(__name__)
 
-
-def evaluate_model(
-    model: Any,
-    X_test: pd.DataFrame,
-    y_test: pd.Series,
-    class_labels: List[str],
-) -> Dict[str, Any]:
-    """Evaluate model on test data with per-class metrics."""
-    LOGGER.info("Evaluating model")
+def evaluate_model(model: Any, X_test, y_test, class_labels: list[str]):
+    """Evaluate final model on hold-out test set and return metrics dict."""
     y_pred = model.predict(X_test)
+    # For OvR classifiers sklearn returns a list of estimators; if pipeline wrapped model then predict_proba is available
+    y_proba = None
+    try:
+        y_proba = model.predict_proba(X_test)
+    except Exception:
+        # some estimators do not support predict_proba
+        y_proba = None
 
-    metrics = {
-        "macro_f1": f1_score(y_test, y_pred, average="macro"),
-        "balanced_accuracy": balanced_accuracy_score(y_test, y_pred),
-        "classification_report": classification_report(
-            y_test, y_pred, target_names=class_labels, output_dict=True
-        ),
-        "confusion_matrix": confusion_matrix(y_test, y_pred).tolist(),
+    acc = float(accuracy_score(y_test, y_pred))
+    bal_acc = float(balanced_accuracy_score(y_test, y_pred))
+    report = classification_report(y_test, y_pred, target_names=class_labels, output_dict=True)
+    roc_auc = None
+    if y_proba is not None:
+        try:
+            roc_auc = float(roc_auc_score(y_test, y_proba, multi_class="ovr", average="macro"))
+        except Exception:
+            roc_auc = None
+
+    return {
+        "accuracy": acc,
+        "balanced_accuracy": bal_acc,
+        "roc_auc_ovr_macro": roc_auc,
+        "classification_report": report,
+        "confusion_matrix": confusion_matrix(y_test, y_pred).tolist()
     }
-    return metrics
 
 
-def summarize_cv_metrics(cv_results: Dict[str, Any]) -> Dict[str, Dict[str, float]]:
-    """Summarize CV mean and SD for macro-F1 and balanced accuracy."""
-    summary = {}
-    for metric in ["macro_f1", "balanced_accuracy"]:
-        means = cv_results["cv_results"][f"mean_test_{metric}"]
-        stds = cv_results["cv_results"][f"std_test_{metric}"]
-        best_idx = int(np.argmax(means))
-        summary[metric] = {
-            "mean": float(means[best_idx]),
-            "std": float(stds[best_idx]),
-        }
-    return summary
+def summarize_cv_metrics(cv_results) -> Dict:
+    """Compact summary of cv_results from GridSearchCV (mean test score, best index, etc.)."""
+    out = {
+        "mean_test_score": float(np.max(cv_results.get("mean_test_score", np.array([np.nan])))),
+        "best_index": int(cv_results.get("rank_test_score", [None])[0]) if "rank_test_score" in cv_results else None,
+        "params": cv_results.get("params", [])[:5]
+    }
+    return out
