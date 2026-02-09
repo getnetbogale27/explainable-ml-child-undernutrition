@@ -8,144 +8,332 @@ Usage:
       --out results/tables/table_s7_performance_splits.csv
 """
 
+from __future__ import annotations
+
 import argparse
+import logging
+import sys
 from pathlib import Path
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
+
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import (
-    recall_score, precision_score, f1_score, roc_auc_score,
-    accuracy_score, confusion_matrix, balanced_accuracy_score
+from sklearn.ensemble import (
+    AdaBoostClassifier,
+    GradientBoostingClassifier,
+    RandomForestClassifier,
 )
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
-from sklearn.svm import SVC
 from sklearn.linear_model import LogisticRegression
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score, roc_auc_score
+from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 
-def compute_confidence_interval(data, confidence=0.95):
-    import scipy.stats
-    a = np.array(data)
-    n = len(a)
-    mean = np.mean(a)
-    se = scipy.stats.sem(a)
-    h = se * scipy.stats.t.ppf((1 + confidence) / 2., n-1) if n > 1 else 0
-    return mean, mean - h, mean + h
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
-def specificity_score(y_true, y_pred, pos_label):
-    cm = confusion_matrix(y_true, y_pred, labels=[pos_label, 'not_'+pos_label])
-    if cm.shape != (2,2):
-        # fallback for multiclass: compute specificity as TN/(TN+FP) for pos_label vs rest
-        tn = np.sum((y_true != pos_label) & (y_pred != pos_label))
-        fp = np.sum((y_true != pos_label) & (y_pred == pos_label))
-        return tn / (tn + fp) if (tn + fp) > 0 else 0
-    tn, fp, fn, tp = cm.ravel()
-    return tn / (tn + fp) if (tn + fp) > 0 else 0
+from src.utils.metrics import macro_specificity, normal_approx_ci
 
-def evaluate_metrics(y_true, y_pred, y_proba, pos_label):
-    sens = recall_score(y_true, y_pred, pos_label=pos_label)
-    spec = specificity_score(y_true, y_pred, pos_label)
-    prec = precision_score(y_true, y_pred, pos_label=pos_label)
-    f1 = f1_score(y_true, y_pred, pos_label=pos_label)
-    acc = accuracy_score(y_true, y_pred)
-    bal_acc = balanced_accuracy_score(y_true, y_pred)
-    auc = roc_auc_score((y_true == pos_label).astype(int), y_proba[:, pos_label]) if y_proba is not None else np.nan
-    return sens, spec, prec, f1, auc, acc, bal_acc
+LOGGER = logging.getLogger(__name__)
 
-def main():
+
+def parse_args() -> argparse.Namespace:
+    """Parse command-line arguments."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", required=True, help="CSV file with raw data")
     parser.add_argument("--target", default="concurrent_conditions", help="Target column name")
-    parser.add_argument("--splits", default="0.6,0.7,0.75,0.8,0.85,0.9", help="Comma-separated train ratios")
+    parser.add_argument(
+        "--splits",
+        default="0.6,0.7,0.75,0.8,0.85,0.9",
+        help="Comma-separated train ratios",
+    )
     parser.add_argument("--out", required=True, help="Output CSV path")
-    args = parser.parse_args()
+    parser.add_argument("--random_state", type=int, default=42, help="Random state seed")
+    parser.add_argument(
+        "--bootstrap",
+        action="store_true",
+        help="Use bootstrap confidence intervals for accuracy/AUC",
+    )
+    parser.add_argument(
+        "--n_bootstrap", type=int, default=1000, help="Number of bootstrap resamples"
+    )
+    parser.add_argument("--n_jobs", type=int, default=-1, help="Parallel jobs for estimators")
+    return parser.parse_args()
 
-    df = pd.read_csv(args.data)
-    train_ratios = [float(x) for x in args.splits.split(",")]
 
-    # Define classifiers to evaluate
-    classifiers = {
-        "Support Vector Machine": SVC(probability=True, kernel="rbf", random_state=42),
-        "Random Forest": RandomForestClassifier(n_estimators=500, random_state=42, n_jobs=-1, class_weight="balanced"),
-        "Gradient Boosting": GradientBoostingClassifier(n_estimators=300, random_state=42),
-        "AdaBoost": AdaBoostClassifier(n_estimators=200, random_state=42),
-        "Logistic Regression": LogisticRegression(max_iter=2000, solver="saga", random_state=42),
-        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5),
+def configure_logging() -> None:
+    """Configure logging for the script."""
+    logging.basicConfig(
+        level=logging.INFO, format="%(levelname)s:%(name)s:%(message)s"
+    )
+
+
+def _validate_and_prepare_data(
+    df: pd.DataFrame, target: str
+) -> Tuple[pd.DataFrame, pd.Series]:
+    """Validate dataset, drop non-numeric columns, and return features/target."""
+    if target not in df.columns:
+        raise ValueError(
+            f"Target column '{target}' not found in dataset. "
+            "Please confirm the target name."
+        )
+    X = df.drop(columns=[target])
+    y = df[target]
+    non_numeric_cols = X.select_dtypes(exclude=[np.number]).columns
+    if len(non_numeric_cols) > 0:
+        LOGGER.warning(
+            "Dropping non-numeric columns: %s", ", ".join(non_numeric_cols)
+        )
+        X = X.drop(columns=non_numeric_cols)
+    if X.empty:
+        raise ValueError(
+            "No numeric features remain after dropping non-numeric columns. "
+            "Please encode categorical features before running this script."
+        )
+    return X, y
+
+
+def _build_classifiers(random_state: int, n_jobs: int) -> Dict[str, object]:
+    """Construct classifier dictionary with consistent random_state values."""
+    return {
+        "Support Vector Machine": SVC(
+            probability=True, kernel="rbf", random_state=random_state
+        ),
+        "Random Forest": RandomForestClassifier(
+            n_estimators=500,
+            random_state=random_state,
+            n_jobs=n_jobs,
+            class_weight="balanced",
+        ),
+        "Gradient Boosting": GradientBoostingClassifier(
+            n_estimators=300, random_state=random_state
+        ),
+        "AdaBoost": AdaBoostClassifier(n_estimators=200, random_state=random_state),
+        "Logistic Regression": LogisticRegression(
+            max_iter=2000, solver="saga", random_state=random_state, n_jobs=n_jobs
+        ),
+        "K-Nearest Neighbors": KNeighborsClassifier(n_neighbors=5, n_jobs=n_jobs),
         "Naive Bayes": GaussianNB(),
-        "Decision Tree": DecisionTreeClassifier(random_state=42),
-        "LASSO": LogisticRegression(penalty="l1", solver="saga", max_iter=2000, random_state=42),
-        "Ridge": LogisticRegression(penalty="l2", solver="saga", max_iter=2000, random_state=42),
-        "Elastic Net": LogisticRegression(penalty="elasticnet", solver="saga", l1_ratio=0.5, max_iter=2000, random_state=42),
+        "Decision Tree": DecisionTreeClassifier(random_state=random_state),
+        "LASSO": LogisticRegression(
+            penalty="l1",
+            solver="saga",
+            max_iter=2000,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        ),
+        "Ridge": LogisticRegression(
+            penalty="l2",
+            solver="saga",
+            max_iter=2000,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        ),
+        "Elastic Net": LogisticRegression(
+            penalty="elasticnet",
+            solver="saga",
+            l1_ratio=0.5,
+            max_iter=2000,
+            random_state=random_state,
+            n_jobs=n_jobs,
+        ),
     }
 
-    # Encode target as numeric labels for AUC indexing
-    classes = sorted(df[args.target].unique())
-    class_to_idx = {c: i for i, c in enumerate(classes)}
 
-    results = []
+def _scores_to_proba(scores: np.ndarray) -> np.ndarray:
+    """Convert decision_function scores to probability-like outputs."""
+    scores = np.asarray(scores)
+    if scores.ndim == 1:
+        probs_pos = 1 / (1 + np.exp(-scores))
+        return np.column_stack([1 - probs_pos, probs_pos])
+    max_scores = np.max(scores, axis=1, keepdims=True)
+    exp_scores = np.exp(scores - max_scores)
+    return exp_scores / np.sum(exp_scores, axis=1, keepdims=True)
+
+
+def _get_prediction_scores(clf: object, X: pd.DataFrame) -> Optional[np.ndarray]:
+    """Return class probabilities or probability-like scores for AUC."""
+    if hasattr(clf, "predict_proba"):
+        return clf.predict_proba(X)
+    if hasattr(clf, "decision_function"):
+        scores = clf.decision_function(X)
+        return _scores_to_proba(scores)
+    LOGGER.warning(
+        "Classifier %s has no predict_proba/decision_function; AUC set to NaN.",
+        clf.__class__.__name__,
+    )
+    return None
+
+
+def _compute_auc(
+    y_true: pd.Series,
+    y_score: Optional[np.ndarray],
+    labels: Iterable,
+    log_failure: bool = True,
+) -> float:
+    """Compute AUC for binary or multiclass probabilities."""
+    if y_score is None:
+        return float("nan")
+    try:
+        y_score_arr = np.asarray(y_score)
+        if y_score_arr.ndim == 2 and y_score_arr.shape[1] == 2:
+            return roc_auc_score(y_true, y_score_arr[:, 1])
+        return roc_auc_score(
+            y_true, y_score_arr, multi_class="ovr", average="macro", labels=list(labels)
+        )
+    except Exception as exc:
+        if log_failure:
+            LOGGER.warning("AUC computation failed: %s", exc)
+        return float("nan")
+
+
+def _bootstrap_ci(
+    metric_fn, n_samples: int, n_bootstrap: int, rng: np.random.Generator
+) -> Tuple[float, float]:
+    """Compute bootstrap confidence interval for a metric."""
+    stats: List[float] = []
+    for _ in range(n_bootstrap):
+        indices = rng.integers(0, n_samples, size=n_samples)
+        value = metric_fn(indices)
+        if not np.isnan(value):
+            stats.append(value)
+    if not stats:
+        return float("nan"), float("nan")
+    lower = float(np.percentile(stats, 2.5))
+    upper = float(np.percentile(stats, 97.5))
+    return max(0.0, lower), min(1.0, upper)
+
+
+def _format_ci(value: float, lower: float, upper: float) -> str:
+    """Format point estimate and confidence interval."""
+    if np.isnan(value) or np.isnan(lower) or np.isnan(upper):
+        return "NA"
+    return f"{value:.3f} ({lower:.3f}, {upper:.3f})"
+
+
+def generate_table_s7(
+    df: pd.DataFrame,
+    target: str,
+    train_ratios: Sequence[float],
+    out_path: Path,
+    random_state: int = 42,
+    bootstrap: bool = False,
+    n_bootstrap: int = 1000,
+    n_jobs: int = -1,
+) -> pd.DataFrame:
+    """Generate performance metrics across train/test splits and save to CSV."""
+    classifiers = _build_classifiers(random_state=random_state, n_jobs=n_jobs)
+    rng = np.random.default_rng(random_state)
+
+    results: List[Dict[str, object]] = []
 
     for train_ratio in train_ratios:
-        test_ratio = 1 - train_ratio
-        # Stratified split
-        train_df, test_df = train_test_split(df, train_size=train_ratio, stratify=df[args.target], random_state=42)
-        X_train = train_df.drop(columns=[args.target])
-        y_train = train_df[args.target]
-        X_test = test_df.drop(columns=[args.target])
-        y_test = test_df[args.target]
+        LOGGER.info("Evaluating train ratio %.2f", train_ratio)
+        train_df, test_df = train_test_split(
+            df,
+            train_size=train_ratio,
+            stratify=df[target],
+            random_state=random_state,
+        )
+        X_train, y_train = _validate_and_prepare_data(train_df, target)
+        X_test, y_test = _validate_and_prepare_data(test_df, target)
+        labels = list(pd.unique(y_train))
 
         for clf_name, clf in classifiers.items():
-            clf.fit(X_train, y_train)
-            y_pred = clf.predict(X_test)
-            y_proba = clf.predict_proba(X_test) if hasattr(clf, "predict_proba") else None
+            LOGGER.info("Fitting %s", clf_name)
+            try:
+                clf.fit(X_train, y_train)
+                y_pred = clf.predict(X_test)
+            except Exception as exc:
+                LOGGER.exception("Failed to fit/predict with %s: %s", clf_name, exc)
+                continue
 
-            # For multiclass, compute metrics per class and average or pick main class? 
-            # Your table seems to show overall metrics, so compute macro averages:
-            sens = recall_score(y_test, y_pred, average="macro")
-            prec = precision_score(y_test, y_pred, average="macro")
-            f1 = f1_score(y_test, y_pred, average="macro")
+            y_score = None
+            try:
+                y_score = _get_prediction_scores(clf, X_test)
+            except Exception as exc:
+                LOGGER.warning(
+                    "Failed to compute prediction scores for %s: %s", clf_name, exc
+                )
+
+            sens = recall_score(y_test, y_pred, average="macro", zero_division=0)
+            spec = macro_specificity(y_test, y_pred, labels)
+            prec = precision_score(y_test, y_pred, average="macro", zero_division=0)
+            f1 = f1_score(y_test, y_pred, average="macro", zero_division=0)
             acc = accuracy_score(y_test, y_pred)
-            bal_acc = balanced_accuracy_score(y_test, y_pred)
-            # AUC macro average
-            if y_proba is not None:
-                try:
-                    auc = roc_auc_score(y_test, y_proba, multi_class="ovr", average="macro")
-                except Exception:
-                    auc = np.nan
+            auc = _compute_auc(y_test, y_score, labels)
+
+            n_samples = len(y_test)
+            if bootstrap:
+                acc_ci_low, acc_ci_high = _bootstrap_ci(
+                    lambda idx: accuracy_score(y_test.iloc[idx], y_pred[idx]),
+                    n_samples,
+                    n_bootstrap,
+                    rng,
+                )
+                auc_ci_low, auc_ci_high = (
+                    _bootstrap_ci(
+                        lambda idx: _compute_auc(
+                            y_test.iloc[idx],
+                            None if y_score is None else y_score[idx],
+                            labels,
+                            log_failure=False,
+                        ),
+                        n_samples,
+                        n_bootstrap,
+                        rng,
+                    )
+                    if not np.isnan(auc)
+                    else (float("nan"), float("nan"))
+                )
             else:
-                auc = np.nan
+                acc_ci_low, acc_ci_high = normal_approx_ci(acc, n_samples)
+                auc_ci_low, auc_ci_high = (
+                    normal_approx_ci(auc, n_samples)
+                    if not np.isnan(auc)
+                    else (float("nan"), float("nan"))
+                )
 
-            # Compute 95% CI for AUC and Accuracy using bootstrapping or normal approx
-            # Here, approximate normal CI for accuracy:
-            n = len(y_test)
-            se_acc = np.sqrt(acc * (1 - acc) / n)
-            ci_acc_low = acc - 1.96 * se_acc
-            ci_acc_high = acc + 1.96 * se_acc
-
-            # For AUC CI, approximate with normal approx (less accurate)
-            if not np.isnan(auc):
-                se_auc = np.sqrt(auc * (1 - auc) / n)
-                ci_auc_low = auc - 1.96 * se_auc
-                ci_auc_high = auc + 1.96 * se_auc
-            else:
-                ci_auc_low = ci_auc_high = np.nan
-
-            results.append({
-                "Train/Test Ratio": train_ratio,
-                "Classifier": clf_name,
-                "Sensitivity": round(sens, 3),
-                "Specificity": np.nan,  # Specificity macro not directly available; can be computed if needed
-                "Precision": round(prec, 3),
-                "F1": round(f1, 3),
-                "AUC (95% CI)": f"{auc:.3f} ({ci_auc_low:.3f}, {ci_auc_high:.3f})" if not np.isnan(auc) else "NA",
-                "Accuracy (95% CI)": f"{acc:.3f} ({ci_acc_low:.3f}, {ci_acc_high:.3f})"
-            })
+            results.append(
+                {
+                    "Train/Test Ratio": train_ratio,
+                    "Classifier": clf_name,
+                    "Sensitivity": round(sens, 3),
+                    "Specificity": round(spec, 3),
+                    "Precision": round(prec, 3),
+                    "F1": round(f1, 3),
+                    "AUC (95% CI)": _format_ci(auc, auc_ci_low, auc_ci_high),
+                    "Accuracy (95% CI)": _format_ci(acc, acc_ci_low, acc_ci_high),
+                }
+            )
 
     df_results = pd.DataFrame(results)
-    outp = Path(args.out)
-    outp.parent.mkdir(parents=True, exist_ok=True)
-    df_results.to_csv(outp, index=False)
-    print(f"Saved Table S7 to {outp}")
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    df_results.to_csv(out_path, index=False)
+    LOGGER.info("Saved Table S7 to %s", out_path)
+    return df_results
+
+
+def main() -> None:
+    """CLI entry point."""
+    configure_logging()
+    args = parse_args()
+    df = pd.read_csv(args.data)
+    train_ratios = [float(x) for x in args.splits.split(",")]
+    generate_table_s7(
+        df,
+        target=args.target,
+        train_ratios=train_ratios,
+        out_path=Path(args.out),
+        random_state=args.random_state,
+        bootstrap=args.bootstrap,
+        n_bootstrap=args.n_bootstrap,
+        n_jobs=args.n_jobs,
+    )
+
 
 if __name__ == "__main__":
     main()
