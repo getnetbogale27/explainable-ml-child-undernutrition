@@ -90,6 +90,17 @@ If you use this code, please cite the manuscript and this repository. See `CITAT
 
 Placeholder: <https://doi.org/XX.XXXX/placeholder>
 
+## Manuscript status and authors
+
+This manuscript is currently submitted to Scientific Reports (Springer Nature) and is under review.
+
+**Authors**
+- Getnet Bogale Begashaw (corresponding author; Getnetbogale145@gmail.com, Getnetbogale@dbu.edu.et)
+- Temesgen Zewotir
+- Haile Mekonnen Fenta
+- Mulu Abebe Asmamaw
+- Abebe Mengistu Legass
+
 ## License
 
 MIT License. See `LICENSE`.
