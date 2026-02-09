@@ -88,4 +88,4 @@ Placeholder: <https://doi.org/XX.XXXX/placeholder>
 
 ## License
 
-MIT License. See `LICENSE.txt`.
+MIT License. See `LICENSE`.

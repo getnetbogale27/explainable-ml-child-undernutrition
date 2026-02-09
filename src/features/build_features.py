@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Feature engineering: imputation, encoding, scaling."""
 from __future__ import annotations
 

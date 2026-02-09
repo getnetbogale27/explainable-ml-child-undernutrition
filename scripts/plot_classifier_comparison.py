@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Script to run classifier comparison and produce bar plot with 95% CI error bars.
 
 Usage:

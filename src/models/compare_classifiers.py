@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Compare many classifiers using repeated stratified CV and return summary stats.
 
 Functions:

@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Fig. S1 (Pie Charts) and Table S3 (Gender-wise distribution across SMOTE)."""
 from __future__ import annotations
 import pandas as pd

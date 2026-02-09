@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate bar charts for categorical variables and box plots for continuous variables."""
 from __future__ import annotations
 import matplotlib.pyplot as plt

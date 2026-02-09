@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """
 Generate Table S6: Fold accuracies, mean and std for a set of classifiers.
 

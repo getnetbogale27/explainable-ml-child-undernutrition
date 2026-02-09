@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Table 4: Class-wise performance metrics for the Random Forest model."""
 from __future__ import annotations
 import pandas as pd

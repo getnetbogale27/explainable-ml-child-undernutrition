@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """
 Generate Table S5: Bivariate chi-square analysis of 'Healthy (N)' vs 'Not Healthy' across categorical variables.
 

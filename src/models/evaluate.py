@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Evaluation utilities: compute test metrics and summarize CV metrics."""
 from __future__ import annotations
 import json

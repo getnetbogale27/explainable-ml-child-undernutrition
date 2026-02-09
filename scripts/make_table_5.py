@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Generate Table 5: Generalization performance (CV Folds vs. Test Set)."""
 from __future__ import annotations
 import pandas as pd

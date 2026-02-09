@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Metric utilities for model evaluation."""
 
 from __future__ import annotations

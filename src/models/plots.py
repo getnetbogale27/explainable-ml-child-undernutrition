@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Plot ROC, PR, and calibration curves."""
 from __future__ import annotations
 

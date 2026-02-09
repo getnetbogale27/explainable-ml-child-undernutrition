@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """SHAP explainability utilities (associational explanations)."""
 from __future__ import annotations
 

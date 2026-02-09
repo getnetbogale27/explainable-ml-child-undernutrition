@@ -1,3 +1,5 @@
+# Copyright (c) 2026 Getnet Bogale
+# Licensed under the MIT License.
 """Preprocessing pipeline: cleaning, encoding, scaling, split, and SMOTE.
 
 Usage:
