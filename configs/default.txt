@@ -16,10 +16,33 @@ dataset:
     - age_months
     - household_size
     - maternal_age
+    - dad_age
+    - BMI
+    - care_age
+    - head_age
   categorical_features:
-    - sex
+    - ch_sex
     - region
-
+    - residence
+    - ch-longterm_health_problem
+    - ch_health_compared_peers
+    - care_Edu_new
+    - Dad_Edu_new
+    - mom_live_location
+    - dad_live_location
+    - hh_size
+    - wealth_quntile
+    - access_to_safe_drink_water
+    - access_to_toilet
+    - access_to_cookng-oil
+    - access_to_electricity
+    - BCG
+    - Measel
+    - DPT
+    - Polio
+    - chingury
+    - head_rela
+    
 class_labels:
   - N
   - U
