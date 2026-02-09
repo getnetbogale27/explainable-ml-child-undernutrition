@@ -1,15 +1,20 @@
-# Explainable ML for Child Undernutrition
+# Imbalance-Aware Explainable Machine Learning for Child Undernutrition Modeling
 
-This repository contains data processing, modeling, and evaluation assets for explainable machine learning work focused on child undernutrition. Use the links below to navigate the codebase quickly.
+This repository contains reproducible research code and scripts for the manuscript
+"Imbalance-Aware Explainable Machine Learning for Concurrent Child Undernutrition Modeling"
+(Young Lives Ethiopia). It is structured to enable end-to-end regeneration of preprocessing,
+model training, evaluation, tables, and figures without shipping restricted data.
 
 ## Repository map
 
 - **Configuration**
   - [`configs/`](configs/) — Model, experiment, or pipeline configuration files.
 - **Data**
-  - [`data/`](data/) — Raw and processed datasets (may be large; check contents before committing changes).
+  - [`data/`](data/) — Raw and processed datasets (restricted data not included).
 - **Documentation**
   - [`docs/`](docs/) — Project documentation and references.
+- **Figures**
+  - [`figures/`](figures/) — Generated plots and supplementary visual assets.
 - **Notebooks**
   - [`notebooks/`](notebooks/) — Exploratory analysis, prototyping, and reports.
 - **Scripts**
@@ -18,25 +23,45 @@ This repository contains data processing, modeling, and evaluation assets for ex
   - [`src/`](src/) — Core library code for data prep, modeling, and explainability.
 - **Tests**
   - [`tests/`](tests/) — Automated tests for the codebase.
-- **Miscellaneous**
-  - [`my/`](my/) — Personal or ad-hoc working files.
+- **Dependencies**
   - [`requirements.txt`](requirements.txt) — Python dependency list.
 
-## Getting started
+## Quickstart
 
-1. Create and activate a Python environment.
-2. Install dependencies:
+1. Create an environment:
    ```bash
+   python -m venv .venv
+   source .venv/bin/activate
    pip install -r requirements.txt
    ```
-3. Review the core modules in [`src/`](src/) and experiment configurations in [`configs/`](configs/).
+2. Add data:
+   - Place the dataset at `data/young_lives_ethiopia.csv` (or update `configs/default.txt`).
+   - The dataset should contain the outcome column and covariates described in the manuscript.
+3. Run the full pipeline:
+   ```bash
+   python scripts/run_pipeline.py --config configs/default.txt
+   ```
+4. Reproduce figures and tables:
+   ```bash
+   python scripts/make_figures.py --config configs/default.txt
+   python scripts/make_tables.py --config configs/default.txt
+   ```
 
-## Common entry points
+## Reproducibility notes
 
-- Configure experiments in [`configs/`](configs/).
-- Run automation tasks from [`scripts/`](scripts/).
-- Explore analyses in [`notebooks/`](notebooks/).
+- Train/test split is performed before any preprocessing.
+- Imputation, encoding, scaling, and SMOTE are fit only on training data.
+- SMOTE is applied within cross-validation folds to prevent leakage.
+- Model selection uses macro-F1 and balanced accuracy.
 
-## Notes
+## Citation
 
-If you add new folders or significant workflows, update this README to keep navigation accurate.
+If you use this code, please cite the manuscript and this repository. See `CITATION.txt`.
+
+## Manuscript link
+
+Placeholder: <https://doi.org/XX.XXXX/placeholder>
+
+## License
+
+MIT License. See `LICENSE.txt`.
