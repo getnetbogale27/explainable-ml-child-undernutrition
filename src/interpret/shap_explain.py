@@ -5,21 +5,28 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Mapping, Protocol, Sequence
 
 import matplotlib.pyplot as plt
+from numpy.typing import ArrayLike
 import shap
 
 LOGGER = logging.getLogger(__name__)
 
 
+class _PipelineWithClassifier(Protocol):
+    """Pipeline interface exposing a fitted classifier step."""
+
+    named_steps: Mapping[str, object]
+
+
 def explain_with_shap(
-    model: Any,
-    X_sample,
-    feature_names,
+    model: _PipelineWithClassifier,
+    X_sample: ArrayLike,
+    feature_names: Sequence[str],
     output_dir: str | Path,
 ) -> Path:
-    """Generate SHAP summary plot for model associations."""
+    """Generate a SHAP summary plot for model associations."""
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 

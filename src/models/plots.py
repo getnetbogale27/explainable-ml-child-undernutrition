@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, List
+from typing import Any, Protocol, Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,6 +20,13 @@ from sklearn.preprocessing import label_binarize
 LOGGER = logging.getLogger(__name__)
 
 
+class _ProbabilisticClassifier(Protocol):
+    """Classifier interface exposing class probabilities."""
+
+    def predict_proba(self, X_test: Any) -> np.ndarray:
+        """Return predicted class probabilities."""
+
+
 def _ensure_dir(path: str | Path) -> Path:
     out_path = Path(path)
     out_path.mkdir(parents=True, exist_ok=True)
@@ -27,10 +34,10 @@ def _ensure_dir(path: str | Path) -> Path:
 
 
 def plot_roc_curves(
-    model: Any,
+    model: _ProbabilisticClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    class_labels: List[str],
+    class_labels: Sequence[str],
     output_dir: str | Path,
 ) -> Path:
     """Generate and save multi-class ROC curves."""
@@ -57,10 +64,10 @@ def plot_roc_curves(
 
 
 def plot_pr_curves(
-    model: Any,
+    model: _ProbabilisticClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    class_labels: List[str],
+    class_labels: Sequence[str],
     output_dir: str | Path,
 ) -> Path:
     """Generate and save multi-class precision-recall curves."""
@@ -87,10 +94,10 @@ def plot_pr_curves(
 
 
 def plot_calibration_curve(
-    model: Any,
+    model: _ProbabilisticClassifier,
     X_test: pd.DataFrame,
     y_test: pd.Series,
-    class_labels: List[str],
+    class_labels: Sequence[str],
     output_dir: str | Path,
 ) -> Path:
     """Generate and save calibration curves per class."""

@@ -4,7 +4,7 @@
 
 from __future__ import annotations
 
-from typing import Iterable, Sequence, Tuple
+from typing import Hashable, Iterable, Sequence, Tuple
 
 import math
 import numpy as np
@@ -26,7 +26,9 @@ def normal_approx_ci(value: float, n: int, z: float = 1.96) -> Tuple[float, floa
 
 
 def macro_specificity(
-    y_true: Sequence, y_pred: Sequence, labels: Iterable
+    y_true: Sequence[Hashable],
+    y_pred: Sequence[Hashable],
+    labels: Iterable[Hashable] | None,
 ) -> float:
     """Compute macro-averaged specificity across classes."""
     y_true_arr = np.asarray(y_true)

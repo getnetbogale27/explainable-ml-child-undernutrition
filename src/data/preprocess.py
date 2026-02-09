@@ -1,34 +1,15 @@
 # Copyright (c) 2026 Getnet Bogale
 # Licensed under the MIT License.
-"""Preprocessing pipeline: cleaning, encoding, scaling, split, and SMOTE.
+"""Preprocessing pipeline for cleaning, encoding, scaling, splitting, and SMOTE.
 
-Usage:
-    from src.data.preprocess import preprocess_and_oversample
-
-    results = preprocess_and_oversample(
-        df=df_raw,
-        numeric_features=config["dataset"]["numeric_features"],
-        categorical_features=config["dataset"]["categorical_features"],
-        ordinal_mappings=config.get("ordinal_mappings", {}),
-        drop_features=config.get("drop_features", []),
-        target_col="concurrent_conditions",
-        test_size=0.10,
-        random_state=42,
-        smote_kwargs={"random_state": 42, "k_neighbors": 5}
-    )
-
-Returns a dict with:
-    X_train_res (pd.DataFrame), y_train_res (pd.Series),
-    X_test (pd.DataFrame), y_test (pd.Series),
-    preprocessor (fitted ColumnTransformer),
-    feature_names (list[str])  # column names after transformation
+The public API returns transformed train/test partitions, fitted transformers,
+and feature names after encoding.
 """
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Mapping, Sequence, TypedDict
 
-import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.compose import ColumnTransformer
@@ -39,19 +20,19 @@ from sklearn.preprocessing import MinMaxScaler, OneHotEncoder, OrdinalEncoder
 LOGGER = logging.getLogger(__name__)
 
 
-def _validate_features(df: pd.DataFrame, features: List[str], name: str) -> None:
+def _validate_features(df: pd.DataFrame, features: Sequence[str], name: str) -> None:
     missing = [c for c in features if c not in df.columns]
     if missing:
         raise ValueError(f"Missing {name} columns in dataframe: {missing}")
 
 
-def _strip_feature_names(features: List[str]) -> List[str]:
+def _strip_feature_names(features: Sequence[str]) -> list[str]:
     return [c.strip() for c in features]
 
 
 def _validate_ordinal_mappings(
-    df: pd.DataFrame, ordinal_mappings: Dict[str, List[str]]
-) -> List[str]:
+    df: pd.DataFrame, ordinal_mappings: Mapping[str, Sequence[str]]
+) -> list[str]:
     ordinal_features = list(ordinal_mappings.keys())
     _validate_features(df, ordinal_features, "ordinal")
     empty_categories = [col for col, categories in ordinal_mappings.items() if not categories]
@@ -64,25 +45,23 @@ def _validate_ordinal_mappings(
 
 
 def build_minmax_preprocessor(
-    numeric_features: List[str],
-    categorical_features: List[str],
-    ordinal_features: Optional[List[str]] = None,
-    ordinal_mappings: Optional[Dict[str, List[str]]] = None,
+    numeric_features: Sequence[str],
+    categorical_features: Sequence[str],
+    ordinal_features: Sequence[str] | None = None,
+    ordinal_mappings: Mapping[str, Sequence[str]] | None = None,
 ) -> ColumnTransformer:
     """Build a preprocessor using mean/mode imputation and MinMax scaling."""
 
     numeric_pipeline = Pipeline(
         steps=[
             ("imputer", SimpleImputer(strategy="mean")),
-            ("scaler", MinMaxScaler()),  # scales to [0,1] as described
+            ("scaler", MinMaxScaler()),
         ]
     )
 
-    # Ordinal encoder (if any)
     transformers = [("num", numeric_pipeline, numeric_features)]
 
     if ordinal_features:
-        # For OrdinalEncoder we need to provide categories for each column
         cats = [ordinal_mappings.get(col, []) for col in ordinal_features]
         ordinal_pipeline = Pipeline(
             steps=[
@@ -104,12 +83,12 @@ def build_minmax_preprocessor(
     return preprocessor
 
 
-def reconstruct_feature_names(preprocessor: ColumnTransformer) -> List[str]:
+def reconstruct_feature_names(preprocessor: ColumnTransformer) -> list[str]:
     """Return feature names after ColumnTransformer (sklearn >=1.0)."""
     if hasattr(preprocessor, "get_feature_names_out"):
         return list(preprocessor.get_feature_names_out())
 
-    names: List[str] = []
+    names: list[str] = []
     for name, trans, cols in preprocessor.transformers_:
         if name == "remainder":
             continue
@@ -123,18 +102,29 @@ def reconstruct_feature_names(preprocessor: ColumnTransformer) -> List[str]:
     return names
 
 
+class PreprocessResult(TypedDict):
+    """Outputs from preprocessing and optional oversampling."""
+
+    X_train_res: pd.DataFrame
+    y_train_res: pd.Series
+    X_test: pd.DataFrame
+    y_test: pd.Series
+    preprocessor: ColumnTransformer
+    feature_names: list[str]
+
+
 def preprocess_and_oversample(
     df: pd.DataFrame,
-    numeric_features: List[str],
-    categorical_features: List[str],
-    ordinal_mappings: Optional[Dict[str, List[str]]] = None,
-    drop_features: Optional[List[str]] = None,
+    numeric_features: Sequence[str],
+    categorical_features: Sequence[str],
+    ordinal_mappings: Mapping[str, Sequence[str]] | None = None,
+    drop_features: Sequence[str] | None = None,
     target_col: str = "concurrent_conditions",
     test_size: float = 0.10,
     random_state: int = 42,
-    smote_kwargs: Optional[Dict] = None,
-) -> Dict[str, object]:
-    """Complete preprocessing pipeline and SMOTE oversampling applied on training set only."""
+    smote_kwargs: Mapping[str, Any] | None = None,
+) -> PreprocessResult:
+    """Run preprocessing and apply SMOTE to the training partition."""
     if drop_features is None:
         drop_features = []
     if ordinal_mappings is None:
@@ -144,22 +134,18 @@ def preprocess_and_oversample(
 
     df = df.copy()
 
-    # Basic cleaning: strip column names
     df.columns = [c.strip() for c in df.columns]
     numeric_features = _strip_feature_names(numeric_features)
     categorical_features = _strip_feature_names(categorical_features)
     drop_features = _strip_feature_names(drop_features)
 
-    # Drop redundant cols
     if drop_features:
         LOGGER.info("Dropping %d redundant features", len(drop_features))
         df = df.drop(columns=[c for c in drop_features if c in df.columns], errors="ignore")
 
-    # Ensure target present
     if target_col not in df.columns:
         raise ValueError(f"Target column '{target_col}' not found in dataframe")
 
-    # Validate feature lists
     _validate_features(df, numeric_features, "numeric")
     _validate_features(df, categorical_features, "categorical")
     ordinal_features = (
@@ -176,10 +162,8 @@ def preprocess_and_oversample(
             f"Overlaps found: {sorted(overlap)}"
         )
 
-    # Drop rows with missing target
     df = df.dropna(subset=[target_col])
 
-    # Train/test split (90:10)
     from sklearn.model_selection import train_test_split
 
     X = df[numeric_features + categorical_features + ordinal_features].copy()
@@ -190,7 +174,6 @@ def preprocess_and_oversample(
     )
     LOGGER.info("Data split: train=%d, test=%d", len(X_train), len(X_test))
 
-    # Build preprocessor (MinMax, mean/mode imputation)
     preprocessor = build_minmax_preprocessor(
         numeric_features=numeric_features,
         categorical_features=categorical_features,
@@ -198,29 +181,23 @@ def preprocess_and_oversample(
         ordinal_mappings=ordinal_mappings,
     )
 
-    # Fit preprocessor on training data only
     LOGGER.info("Fitting preprocessor on training data")
     X_train_trans = preprocessor.fit_transform(X_train)
     LOGGER.info("Transforming test data")
     X_test_trans = preprocessor.transform(X_test)
 
-    # Retrieve feature names after transform
     try:
         feature_names = list(preprocessor.get_feature_names_out())
     except Exception:
-        # fallback attempt if sklearn older/newer. Still try to build names
         feature_names = reconstruct_feature_names(preprocessor)
 
-    # Convert to DataFrame for easier downstream processing
     X_train_df = pd.DataFrame(X_train_trans, columns=feature_names, index=X_train.index)
     X_test_df = pd.DataFrame(X_test_trans, columns=feature_names, index=X_test.index)
 
-    # Apply SMOTE on training partition only
     if smote_kwargs is not None:
         LOGGER.info("Applying SMOTE to training set with args: %s", smote_kwargs)
         smote = SMOTE(**smote_kwargs)
         X_train_res, y_train_res = smote.fit_resample(X_train_df, y_train)
-        # Ensure DataFrame columns preserved
         X_train_res = pd.DataFrame(X_train_res, columns=feature_names)
         y_train_res = pd.Series(y_train_res, name=y_train.name)
         LOGGER.info(

@@ -5,13 +5,14 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Mapping, Sequence
 
 import joblib
 import numpy as np
 import pandas as pd
 from imblearn.over_sampling import SMOTE
 from imblearn.pipeline import Pipeline as ImbPipeline
+from sklearn.base import TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import make_scorer, f1_score, balanced_accuracy_score
 from sklearn.model_selection import GridSearchCV, StratifiedKFold
@@ -19,7 +20,10 @@ from sklearn.model_selection import GridSearchCV, StratifiedKFold
 LOGGER = logging.getLogger(__name__)
 
 
-def build_model_pipeline(preprocessor: Any, random_state: int) -> ImbPipeline:
+def build_model_pipeline(
+    preprocessor: TransformerMixin,
+    random_state: int,
+) -> ImbPipeline:
     """Build a leakage-safe pipeline with preprocessing and SMOTE."""
     classifier = RandomForestClassifier(random_state=random_state)
     pipeline = ImbPipeline(
@@ -35,12 +39,12 @@ def build_model_pipeline(preprocessor: Any, random_state: int) -> ImbPipeline:
 def train_with_cv(
     X_train: pd.DataFrame,
     y_train: pd.Series,
-    preprocessor: Any,
-    model_grid: Dict[str, Any],
+    preprocessor: TransformerMixin,
+    model_grid: Mapping[str, Sequence[Any]],
     cv_folds: int,
     random_state: int,
     results_path: str | Path,
-) -> Tuple[ImbPipeline, Dict[str, Any]]:
+) -> tuple[ImbPipeline, dict[str, Any]]:
     """Run cross-validation with hyperparameter tuning."""
     pipeline = build_model_pipeline(preprocessor, random_state)
     scoring = {
@@ -76,7 +80,10 @@ def train_with_cv(
     return grid.best_estimator_, cv_results
 
 
-def extract_cv_summary(cv_results: Dict[str, Any], metric: str) -> Dict[str, float]:
+def extract_cv_summary(
+    cv_results: Mapping[str, Any],
+    metric: str,
+) -> dict[str, float]:
     """Compute mean and standard deviation for a CV metric."""
     scores = cv_results["cv_results"][f"mean_test_{metric}"]
     stds = cv_results["cv_results"][f"std_test_{metric}"]
