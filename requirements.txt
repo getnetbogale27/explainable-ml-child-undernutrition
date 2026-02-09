@@ -8,3 +8,5 @@ pyyaml
 joblib
 shap
 pytest
+scipy
+ruff

@@ -47,6 +47,30 @@ model training, evaluation, tables, and figures without shipping restricted data
    python scripts/make_tables.py --config configs/default.txt
    ```
 
+## Supplementary tables (S5-S7)
+
+Generate specific supplementary tables directly from the raw dataset:
+
+```bash
+python scripts/make_table_s5_bivariate.py --data data/young_lives_ethiopia.csv --target concurrent_conditions --out results/tables/table_s5_bivariate.csv
+python scripts/make_table_s6_fold_accuracies.py --data data/young_lives_ethiopia.csv --target concurrent_conditions --out results/tables/table_s6_fold_accuracies.csv
+python scripts/make_table_s7_performance_splits.py --data data/young_lives_ethiopia.csv --target concurrent_conditions --out results/tables/table_s7_performance_splits.csv
+```
+
+## Testing and linting
+
+Run the test suite with:
+
+```bash
+python -m pytest
+```
+
+Run lint checks with:
+
+```bash
+python -m ruff check .
+```
+
 ## Reproducibility notes
 
 - Train/test split is performed before any preprocessing.
