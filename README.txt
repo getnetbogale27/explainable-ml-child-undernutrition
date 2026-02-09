@@ -15,6 +15,7 @@ Repository structure
 - figures/: generated plots (ROC, PR, calibration, SHAP summaries).
 - tables/: generated tables (metrics, model selection summaries).
 - docs/: documentation, including outcome definitions.
+- notebooks/: exploratory and draft analysis notebooks.
 - tests/: minimal unit tests for leakage checks and data shape validation.
 
 Quickstart
