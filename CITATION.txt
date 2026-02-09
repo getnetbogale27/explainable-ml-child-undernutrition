@@ -4,6 +4,6 @@ Title: Imbalance-Aware Explainable Machine Learning for Concurrent Child Undernu
 Authors: Getnet Bogale Begashaw; Temesgen Zewotir; Haile Mekonnen Fenta; Mulu Abebe Asmamaw; Abebe Mengistu Legass
 Version: 0.1.0
 Release date: 2025-01-01
-URL: https://github.com/placeholder/imbalanced-ml-child-undernutrition
+URL: https://github.com/getnetbogale27/imbalanced-ml-child-undernutrition
 License: MIT
 Status: Submitted to Scientific Reports (under review)

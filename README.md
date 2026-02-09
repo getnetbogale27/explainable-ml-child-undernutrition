@@ -86,10 +86,6 @@ The dataset used in this study was obtained from the Young Lives Study. Access t
 
 If you use this code, please cite the manuscript and this repository. See `CITATION.txt`.
 
-## Manuscript link
-
-Placeholder: <https://doi.org/XX.XXXX/placeholder>
-
 ## Manuscript status and authors
 
 This manuscript is currently submitted to Scientific Reports (Springer Nature) and is under review.
